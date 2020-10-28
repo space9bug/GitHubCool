@@ -1,6 +1,7 @@
 import json
 import re
 import subprocess
+import sys
 import threading
 
 import requests
@@ -22,14 +23,31 @@ class PingThread(threading.Thread):
         self.pbar = pbar
 
     def run(self):
-        str_out = ["ping", self.ip]
+        if sys.platform[:3] == "win":
+            str_out = ["ping", self.ip]
+        elif sys.platform[:5] == "linux":
+            str_out = ["ping", "-c", "4", self.ip]
+        elif sys.platform == "darwin":
+            str_out = ["ping", "-c", "4", self.ip]
         process = subprocess.Popen(str_out, shell=False, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
         for line in process.stdout:
             # print(line)
 
-            delay_res = re.search(r'平均 = (?P<delay>[\s\S]*?)ms', line)
+            if sys.platform[:3] == "win":
+                delay_res = re.search(r'平均 = (?P<delay>[\s\S]*?)ms', line)
+            elif sys.platform[:5] == "linux":
+                delay_res = re.search(r'= (?P<delay>[\s\S]*?) ms', line)
+            elif sys.platform == "darwin":
+                delay_res = re.search(r'= (?P<delay>[\s\S]*?) ms', line)
             if delay_res is not None:
-                delay = int(delay_res.groupdict()['delay'])
+                if sys.platform[:3] == "win":
+                    delay = int(delay_res.groupdict()['delay'])
+                elif sys.platform[:5] == "linux":
+                    delay_str = delay_res.groupdict()['delay'].split("/")[1]
+                    delay = int(float(delay_str))
+                elif sys.platform == "darwin":
+                    delay_str = delay_res.groupdict()['delay'].split("/")[1]
+                    delay = int(float(delay_str))
 
                 global min_time
                 global fast_ip
@@ -38,10 +56,11 @@ class PingThread(threading.Thread):
                 if delay < min_time:
                     min_time = delay
                     fast_ip = self.ip
-                # 更新进度条
-                self.pbar.update(1)
                 # 释放锁，开启下一个线程
                 threadLock.release()
+        process.wait()
+        # 更新进度条
+        self.pbar.update(1)
 
 
 def get_dict(flag):
@@ -66,6 +85,7 @@ def test():
     print("\n-----------------GitHubCool beta 首次发布：2020/10/19 11:30-----------------")
     print("您可以Star和Fork我的项目：https://github.com/space9bug/GitHubCool")
     print("本项目通过优选cdn节点，修改本地hosts文件，解决Github图片或者文件无法访问、加载缓慢的问题")
+    print("支持在Windows、Linux、MacOS上使用")
     print("优选cdn节点需要大约10分钟时间，请耐心等待，优选中。。。。。。")
 
     count = 0
@@ -109,12 +129,21 @@ def test():
     print("# GitHubCool END")
     print("_________________________________分割线_____________________________________")
 
-    print("1.手动打开Windows系统：C:\Windows\System32\drivers\etc\hosts")
-    print("2.将上面输出内容复制到文本末尾")
-    print("3.CMD命令行中输入ipconfig /flushdns使配置立即生效")
+    if sys.platform[:3] == "win":
+        print("1.手动打开Windows系统：C:\Windows\System32\drivers\etc\hosts")
+        print("2.将上面输出内容复制到文本末尾")
+        print("3.CMD命令行中输入ipconfig /flushdns使配置立即生效")
 
-    # 按任意键退出
-    subprocess.call("pause", shell=True)
+        # 按任意键退出
+        subprocess.call("pause", shell=True)
+    elif sys.platform[:5] == "linux":
+        print("1.手动打开Linux系统：/etc/hosts")
+        print("2.将上面输出内容复制到文本末尾")
+        print("3.Terminal终端中输入sudo rcnscd restart使配置立即生效")
+    elif sys.platform == "darwin":
+        print("1.手动打开MacOS系统：/etc/hosts")
+        print("2.将上面输出内容复制到文本末尾")
+        print("3.Terminal终端中输入sudo killall -HUP mDNSResponder使配置立即生效")
 
 
 if __name__ == '__main__':
