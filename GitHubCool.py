@@ -114,7 +114,8 @@ def test():
         # 拼接相同ip的域名
         temp_str = ""
         for name_item in item["name"]:
-            temp_str += f'{fast_ip} {name_item}\n'
+            if fast_ip != "":
+                temp_str += f'{fast_ip} {name_item}\n'
         big_str += temp_str
 
         # 重置
